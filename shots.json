@@ -1,1 +1,1 @@
-[{"name":"1-start.jpg","query":"?shot=start"},{"name":"2-play.jpg","query":"?shot=play"},{"name":"3-bomb.jpg","query":"?shot=bomb"},{"name":"4-end.jpg","query":"?shot=end"}]
+[{"name":"1-start.jpg","query":"?shot=start&time=21:00"},{"name":"2-play.jpg","query":"?shot=play&time=13:00"},{"name":"3-bomb.jpg","query":"?shot=bomb&time=18:20"},{"name":"4-end.jpg","query":"?shot=end&time=02:00"}]

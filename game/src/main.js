@@ -16,6 +16,7 @@ import { stepRound, buy } from './rounds.js';
 import { collectUI, updateHUD, flashHitmarker } from './hud.js';
 import { sfx, unlockAudio } from './audio.js';
 import { createEffects } from './effects.js';
+import { createDayNight } from './daynight.js';
 import { TEAM, PALETTE } from './palette.js';
 
 const STEP = 1 / 60;
@@ -27,16 +28,31 @@ window.__shotReady = false;
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// Soft shadows from the sun (day) and the moon (night): one 1024
+// shadow map per key light, only the main structures and the soldiers
+// cast, so it stays light on low-end GPUs.
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById('game').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x050914);
-scene.fog = new THREE.Fog(0x0a1328, 42, 150);
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 320);
+// Fog starts past the playable map (60 m) so the station stays crisp
+// while the mountain ring fades into a soft haze.
+scene.fog = new THREE.Fog(0x0a1328, 60, 320);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 600);
 camera.rotation.order = 'YXZ';
 scene.add(camera);
 
 const station = buildStation(scene);
+const dayNight = createDayNight(scene, station.handles);
+// ?time=HH:MM pins the clock (used by the screenshot shots); without
+// it the match opens just before dawn and the day rolls on from there.
+const TIME_PARAM = params.get('time') || '';
+{
+  const m = /^(\d{1,2}):(\d{2})$/.exec(TIME_PARAM);
+  if (m) dayNight.setStartHour(Number(m[1]) + Number(m[2]) / 60);
+}
 const effects = createEffects(scene);
 
 // First-person viewmodel: one detailed gun per weapon kind, built from
@@ -271,6 +287,10 @@ function makeAgentMesh(team) {
     new THREE.MeshBasicMaterial({ color: accent }),
   ));
   marker.position.y = 1.98;
+  // Soldiers cast soft shadows; the floating team marker does not.
+  for (const p of parts) {
+    if (p !== marker) p.castShadow = true;
+  }
   for (const p of parts) group.add(p);
   scene.add(group);
   return { group, body, head, marker };
@@ -575,9 +595,11 @@ function updateMeshes() {
 function render() {
   const p = player;
   if (state.phase === 'menu') {
+    // Wide slow orbit over the whole station: the mountains, the lake
+    // and the crashed plane all read from up here.
     const t = state.time * 0.06;
-    camera.position.set(Math.sin(t) * 20, 9, Math.cos(t) * 20);
-    camera.lookAt(0, 1, 0);
+    camera.position.set(Math.sin(t) * 48, 24, Math.cos(t) * 48);
+    camera.lookAt(0, 0, 0);
   } else if (!p.alive) {
     // Spectate the first living teammate.
     const mate = state.agents.find((a) => a.team === p.team && a.alive && !a.isPlayer);
@@ -595,6 +617,8 @@ function render() {
   updateViewGun();
   updateMeshes();
   station.update(state.time);
+  dayNight.update(state.time);
+  state.day = dayNight.state;
   effects.update(1 / 60, state.time);
   const b = state.bomb;
   effects.setBomb(b.x, b.z, b.state === 'planted', state.time);
@@ -675,19 +699,19 @@ function applyShotMode() {
     state.bomb.x = SITES.B.x;
     state.bomb.z = SITES.B.z;
     state.bomb.fuse = 30;
-    player.x = 10;
-    player.z = 2;
-    player.yaw = Math.atan2(SITES.B.x - 10, -(SITES.B.z - 2));
+    player.x = 28;
+    player.z = -4;
+    player.yaw = Math.atan2(SITES.B.x - 28, -(SITES.B.z + 4));
     const b0 = state.agents.find((a) => a.id === 'i0');
     if (b0) {
-      b0.x = 20;
-      b0.z = -6;
+      b0.x = 38;
+      b0.z = -14;
       b0.yaw = Math.PI - 0.4;
       b0.mode = 'hold';
       b0.holdUntil = 1e9;
       b0.invulnerable = true;
     }
-    effects.addTracer({ x: 20, y: 1.6, z: -6 }, { x: 14.5, y: 1.4, z: -2.5 }, 0xff8a7a);
+    effects.addTracer({ x: 38, y: 1.6, z: -14 }, { x: 33, y: 1.4, z: -10 }, 0xff8a7a);
   }
   if (SHOT === 'end') {
     state.score.north = 1;

@@ -9,9 +9,16 @@ with an original map, art, sounds and names. Built for make.fun's threejs-fps-02
 
 ## The game
 
-**Station Aurora** — an arctic research station at night, under an aurora sky.
+**Station Aurora** — a 120×90 m arctic research station under a turning sky.
 Two bomb sites: the **Comms Array** (A, north-west) and the **Reactor Hall** (B, north-east),
-joined by three lanes: Hab Row west, the Frozen Plaza centre, Storage Yard east.
+joined by three long lanes: the Research Complex west, the Frozen Lake centre, the Storage
+Yard east — past a crashed plane, a glacier ridge, a snow hill and an observation tower,
+with a ring of snowy peaks and a glacier face on the horizon.
+
+- **Day/night cycle:** one full day every 6 minutes of game time. Dawn, soft daylight,
+  dusk and aurora night all change the light, sky, fog, stars and window glow — and a
+  timeline at the top of the screen shows the clock, the phase (FAJAR / SIANG / SENJA /
+  MALAM) and a sun/moon marker riding the 24-hour strip.
 
 - **Two teams, 5v5:** you are Northwind's fifth (attackers). Four bot teammates fight
   beside you; five Icefall bots defend.

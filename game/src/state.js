@@ -35,6 +35,9 @@ export function createState() {
     // Who carries the charge this round (player or a north bot).
     carrierId: null,
     stats: { shots: 0, hits: 0, kills: 0 },
+    // Time of day, refreshed every frame by the day/night cycle:
+    // { hour, label, dayFactor, clock }. The HUD timeline reads it.
+    day: { hour: 5.5, label: 'MALAM', dayFactor: 0, clock: '05:30' },
   };
 }
 

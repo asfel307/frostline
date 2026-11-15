@@ -67,9 +67,9 @@ export function createEffects(scene) {
   const snowPos = new Float32Array(SNOW_N * 3);
   const snowVel = new Float32Array(SNOW_N);
   for (let i = 0; i < SNOW_N; i += 1) {
-    snowPos[i * 3] = (Math.random() - 0.5) * 90;
+    snowPos[i * 3] = (Math.random() - 0.5) * 130;
     snowPos[i * 3 + 1] = Math.random() * 26;
-    snowPos[i * 3 + 2] = (Math.random() - 0.5) * 70;
+    snowPos[i * 3 + 2] = (Math.random() - 0.5) * 100;
     snowVel[i] = 1.2 + Math.random() * 1.6;
   }
   const snowGeo = new THREE.BufferGeometry();

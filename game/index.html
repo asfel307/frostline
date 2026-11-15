@@ -32,6 +32,46 @@
   #game, #game canvas { position: fixed; inset: 0; display: block; }
   #hud { position: fixed; inset: 0; pointer-events: none; }
 
+  /* Day/night timeline: a 24-hour strip at the very top, with a
+     sun/moon marker riding along it and the clock + phase below.
+     Kept thin and quiet so it never fights the crosshair. */
+  #dayline {
+    position: fixed; top: 8px; left: 50%; transform: translateX(-50%);
+    width: min(420px, 72vw);
+    font-family: var(--font-readout); text-shadow: 0 1px 3px #000;
+  }
+  #dayline-track {
+    position: relative; height: 6px; border-radius: 3px;
+    background: linear-gradient(90deg,
+      #0a1328 0%, #0a1328 20%, #c98a7a 25%, #8fb4d4 33%,
+      #8fb4d4 66%, #e88a5a 72%, #2a2438 78%, #0a1328 83%, #0a1328 100%);
+    border: 1px solid rgba(255,255,255,.18);
+  }
+  #dayline-marker {
+    position: absolute; top: 50%; left: 0;
+    width: 18px; height: 18px; margin: -9px 0 0 -9px;
+    border-radius: 50%; background: var(--surface);
+    border: 1px solid var(--ink);
+    display: grid; place-items: center;
+    font-size: 11px; line-height: 1;
+  }
+  #dayline-ticks {
+    display: flex; justify-content: space-between;
+    font-size: 9px; color: var(--muted); margin-top: 3px;
+    letter-spacing: .04em;
+  }
+  #dayline-clock {
+    text-align: center; font-size: 11px; color: var(--muted);
+    margin-top: 2px; letter-spacing: .1em;
+  }
+  #dayline-clock b { color: var(--ink); font-weight: 600; }
+
+  @media (max-width: 640px) {
+    #dayline { width: 58vw; }
+    #killfeed { top: 52px; }
+    #topbar { top: 48px; }
+  }
+
   #crosshair { position: fixed; left: 50%; top: 50%; width: 24px; height: 24px; transform: translate(-50%, -50%); --gap: 4px; }
   #crosshair i { position: absolute; background: var(--ink); opacity: .65; }
   #crosshair i:nth-child(1) { left: 11px; top: 0; width: 2px; height: calc(7px + var(--gap) * 0); }
@@ -52,7 +92,7 @@
   #hitmarker i:nth-child(4) { top: 12px; right: 0; height: 2px; width: 8px; }
 
   #topbar {
-    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    position: fixed; top: 44px; left: 50%; transform: translateX(-50%);
     display: flex; flex-direction: column; align-items: center; gap: 2px;
     font-family: var(--font-readout); text-shadow: 0 1px 3px #000;
   }
@@ -84,7 +124,7 @@
   #grenade-count { font-size: 14px; color: var(--muted); margin-top: 2px; }
 
   #killfeed {
-    position: fixed; right: 28px; top: 20px; text-align: right;
+    position: fixed; right: 28px; top: 48px; text-align: right;
     font-family: var(--font-readout); font-size: 13px; line-height: 1.7;
     text-shadow: 0 1px 3px #000;
   }
@@ -168,6 +208,11 @@
 <div id="game"></div>
 
 <div id="hud" aria-hidden="true">
+  <div id="dayline">
+    <div id="dayline-track"><div id="dayline-marker">☾</div></div>
+    <div id="dayline-ticks"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+    <div id="dayline-clock"><b>05:30</b> · MALAM</div>
+  </div>
   <div id="crosshair"><i></i><i></i><i></i><i></i></div>
   <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
 
@@ -215,7 +260,7 @@
   <section class="panel" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
     <div class="tag">Station Aurora · 68° North</div>
     <h1 id="overlay-title">FROST<em>LINE</em></h1>
-    <p>A night raid on an arctic research station. You are <b>Northwind</b>'s fifth —
+    <p>A raid on an arctic research station under a turning sky. You are <b>Northwind</b>'s fifth —
     plant the charge at the <b>Comms Array</b> or the <b>Reactor Hall</b>, or wipe out
     <b>Icefall</b> before the clock runs out. First to 5 rounds takes the match.</p>
     <button id="play" class="big-btn" type="button">Click to play</button>

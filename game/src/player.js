@@ -37,8 +37,8 @@ export function moveAgent(a, dx, dz) {
     a.z += dz;
     moved = true;
   }
-  a.x = Math.max(-33.4, Math.min(33.4, a.x));
-  a.z = Math.max(-23.4, Math.min(23.4, a.z));
+  a.x = Math.max(-58.4, Math.min(58.4, a.x));
+  a.z = Math.max(-43.4, Math.min(43.4, a.z));
   return moved;
 }
 

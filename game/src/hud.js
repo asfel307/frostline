@@ -33,6 +33,8 @@ export function collectUI() {
     plantBar: byId('plant-bar'),
     plantFill: byId('plant-fill'),
     plantLabel: byId('plant-label'),
+    dayMarker: byId('dayline-marker'),
+    dayClock: byId('dayline-clock'),
   };
 }
 
@@ -69,6 +71,20 @@ export function updateHUD(state, ui) {
   } else {
     ui.bomb.textContent = b.state === 'detonated' ? 'CHARGE DETONATED' : 'No charge planted';
     ui.bomb.className = '';
+  }
+
+  // Day/night timeline: the sun/moon marker rides the 24-hour strip,
+  // the clock + phase sit under it. Sun by day, moon by night.
+  const d = state.day;
+  if (d && ui.dayMarker && ui.dayClock) {
+    const isDay = d.dayFactor > 0.5;
+    ui.dayMarker.style.left = `${((d.hour % 24) / 24 * 100).toFixed(1)}%`;
+    ui.dayMarker.textContent = isDay ? '☀' : '☾';
+    const html = `<b>${d.clock}</b> · ${d.label}`;
+    if (ui.dayClock.dataset.html !== html) {
+      ui.dayClock.innerHTML = html;
+      ui.dayClock.dataset.html = html;
+    }
   }
 
   // Crosshair opens up with spread: stopping to aim pays.
