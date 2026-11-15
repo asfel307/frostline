@@ -16,7 +16,7 @@ import { stepRound, buy } from './rounds.js';
 import { collectUI, updateHUD, flashHitmarker } from './hud.js';
 import { sfx, unlockAudio } from './audio.js';
 import { createEffects } from './effects.js';
-import { TEAM } from './palette.js';
+import { TEAM, PALETTE } from './palette.js';
 
 const STEP = 1 / 60;
 const params = new URLSearchParams(window.location.search);
@@ -39,18 +39,94 @@ scene.add(camera);
 const station = buildStation(scene);
 const effects = createEffects(scene);
 
-// First-person viewmodel: a dark gun shape at the bottom-right of the view.
+// First-person viewmodel: one detailed gun per weapon kind, built from
+// primitives (receiver, barrel, handguard, stock, grip, magazine,
+// sights). Only the group matching the player's current weapon is
+// shown; the shape switches when the weapon switches. Position, recoil
+// kick and bob are applied to the shared `viewGun` group exactly as
+// before — only the visible shape changes.
+function vmMat(color, rough = 0.42, metal = 0.5) {
+  return new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, emissive: 0x0d1117 });
+}
+function vmBox(w, h, d, mat, x, y, z, rx = 0) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  if (rx) m.rotation.x = rx;
+  return m;
+}
+function vmCyl(r, len, mat, x, y, z) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 10), mat);
+  m.rotation.x = Math.PI / 2;
+  m.position.set(x, y, z);
+  return m;
+}
+// Forward for a viewmodel gun is -z (away from the camera).
+function buildViewGunModel(kind) {
+  const g = new THREE.Group();
+  const metal = vmMat(0x2c3442);
+  const dark = vmMat(0x1c222c, 0.5, 0.4);
+  const gripMat = vmMat(0x232a33, 0.7, 0.2);
+  const sightMat = vmMat(0x3a4550, 0.5, 0.4);
+  if (kind === 'pistol') {
+    // P-9 Frostbite: short, compact slide + grip.
+    g.add(vmBox(0.05, 0.055, 0.24, metal, 0, 0.02, -0.04));
+    g.add(vmBox(0.052, 0.012, 0.05, dark, 0, 0.035, 0.05));
+    g.add(vmBox(0.045, 0.05, 0.16, dark, 0, -0.01, 0));
+    g.add(vmBox(0.042, 0.11, 0.055, gripMat, 0, -0.065, 0.055, 0.28));
+    g.add(vmBox(0.04, 0.012, 0.05, dark, 0, -0.042, -0.02));
+    g.add(vmCyl(0.014, 0.03, dark, 0, 0.02, -0.17));
+    g.add(vmBox(0.008, 0.02, 0.01, sightMat, 0, 0.055, -0.15));
+    g.add(vmBox(0.03, 0.015, 0.01, sightMat, 0, 0.055, 0.06));
+  } else if (kind === 'rifle') {
+    // NK-77 Northstar: long barrel, stock, curved magazine, tube scope.
+    g.add(vmBox(0.065, 0.09, 0.30, metal, 0, 0, 0));
+    g.add(vmCyl(0.016, 0.28, dark, 0, 0.018, -0.28));
+    g.add(vmCyl(0.024, 0.06, dark, 0, 0.018, -0.43));
+    g.add(vmBox(0.058, 0.075, 0.20, dark, 0, 0.008, -0.22));
+    g.add(vmBox(0.062, 0.008, 0.18, metal, 0, 0.05, -0.22));
+    g.add(vmBox(0.008, 0.03, 0.18, metal, 0.031, 0.008, -0.22));
+    g.add(vmBox(0.008, 0.03, 0.18, metal, -0.031, 0.008, -0.22));
+    g.add(vmBox(0.055, 0.085, 0.15, dark, 0, -0.008, 0.20));
+    g.add(vmBox(0.06, 0.10, 0.02, gripMat, 0, -0.008, 0.28));
+    g.add(vmBox(0.038, 0.085, 0.045, gripMat, 0, -0.075, 0.09, 0.3));
+    g.add(vmBox(0.045, 0.13, 0.06, dark, 0, -0.095, -0.04, -0.28));
+    g.add(vmBox(0.035, 0.012, 0.06, dark, 0, -0.05, 0.02));
+    g.add(vmCyl(0.02, 0.13, dark, 0, 0.07, -0.03));
+    g.add(vmBox(0.02, 0.03, 0.02, metal, 0, 0.05, 0.02));
+    g.add(vmBox(0.02, 0.03, 0.02, metal, 0, 0.05, -0.08));
+    g.add(vmBox(0.01, 0.025, 0.012, sightMat, 0, 0.05, -0.30));
+  } else {
+    // V-4 Blizzard: short barrel, boxy body, straight magazine,
+    // folding stock, vertical foregrip.
+    g.add(vmBox(0.065, 0.095, 0.26, metal, 0, 0, 0));
+    g.add(vmCyl(0.018, 0.12, dark, 0, 0.018, -0.18));
+    g.add(vmCyl(0.026, 0.04, dark, 0, 0.018, -0.25));
+    g.add(vmBox(0.05, 0.06, 0.13, dark, 0, -0.005, 0.18, -0.08));
+    g.add(vmBox(0.038, 0.08, 0.045, gripMat, 0, -0.07, 0.07, 0.28));
+    g.add(vmBox(0.04, 0.15, 0.055, dark, 0, -0.105, -0.01));
+    g.add(vmBox(0.035, 0.06, 0.04, gripMat, 0, -0.06, -0.10));
+    g.add(vmBox(0.01, 0.025, 0.012, sightMat, 0, 0.055, -0.12));
+    g.add(vmBox(0.028, 0.015, 0.012, sightMat, 0, 0.055, 0.08));
+    g.add(vmBox(0.005, 0.02, 0.18, metal, 0.035, 0.01, -0.05));
+  }
+  // Held slightly angled inward, like a real grip.
+  g.rotation.y = 0.06;
+  return g;
+}
 const viewGun = new THREE.Group();
-const viewGunBody = new THREE.Mesh(
-  new THREE.BoxGeometry(0.09, 0.12, 0.45),
-  new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.45, metalness: 0.4, emissive: 0x141a24 }),
-);
-const viewGunBarrel = new THREE.Mesh(
-  new THREE.BoxGeometry(0.04, 0.04, 0.22),
-  new THREE.MeshStandardMaterial({ color: 0x2c3442, roughness: 0.4, metalness: 0.5, emissive: 0x0d1117 }),
-);
-viewGunBarrel.position.set(0, 0.03, -0.32);
-viewGun.add(viewGunBody, viewGunBarrel);
+const viewGunModels = {
+  pistol: buildViewGunModel('pistol'),
+  rifle: buildViewGunModel('rifle'),
+  smg: buildViewGunModel('smg'),
+};
+for (const m of Object.values(viewGunModels)) viewGun.add(m);
+viewGun.userData.current = null;
+function updateViewGun() {
+  const w = player.weapon;
+  if (viewGun.userData.current === w) return;
+  viewGun.userData.current = w;
+  for (const [id, m] of Object.entries(viewGunModels)) m.visible = id === w;
+}
 viewGun.position.set(0.3, -0.27, -0.55);
 camera.add(viewGun);
 
@@ -59,32 +135,143 @@ const input = createInput();
 const ui = collectUI();
 
 // ---- Agents -------------------------------------------------------------
+// Cylinder between two points, for the soldier's arms.
+function limb(from, to, r, mat) {
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.85, len, 8), mat);
+  m.position.copy(from).addScaledVector(dir, 0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+  return m;
+}
+
+// The rifle a bot carries: receiver, barrel + muzzle, handguard, stock,
+// curved magazine, grip and iron sights — held in both hands, pointing
+// at the bot's facing direction (+z in the bot's local frame).
+function buildBotRifle() {
+  const g = new THREE.Group();
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1c222c, roughness: 0.5, metalness: 0.4 });
+  const mid = new THREE.MeshStandardMaterial({ color: 0x2c3442, roughness: 0.45, metalness: 0.5 });
+  const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.34), mid);
+  g.add(receiver);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.26, 8), dark);
+  barrel.rotation.x = Math.PI / 2;
+  barrel.position.set(0, 0.015, 0.28);
+  g.add(barrel);
+  const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.05, 8), dark);
+  muzzle.rotation.x = Math.PI / 2;
+  muzzle.position.set(0, 0.015, 0.42);
+  g.add(muzzle);
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.07, 0.18), dark);
+  guard.position.set(0, 0.01, 0.2);
+  g.add(guard);
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.14), dark);
+  stock.position.set(0, -0.005, -0.22);
+  g.add(stock);
+  const mag = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.07), dark);
+  mag.position.set(0, -0.09, 0.03);
+  mag.rotation.x = 0.25;
+  g.add(mag);
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.05), dark);
+  grip.position.set(0, -0.075, -0.09);
+  grip.rotation.x = 0.3;
+  g.add(grip);
+  const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.035, 0.02), dark);
+  frontSight.position.set(0, 0.06, 0.3);
+  g.add(frontSight);
+  const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 0.03), dark);
+  rearSight.position.set(0, 0.055, -0.12);
+  g.add(rearSight);
+  return g;
+}
+
 function makeAgentMesh(team) {
   const group = new THREE.Group();
-  const bodyMat = new THREE.MeshStandardMaterial({ color: team === 'north' ? 0x2a9fd8 : 0xd84a3a, roughness: 0.7 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.95, 0.34), bodyMat);
-  body.position.y = 0.85;
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.21, 12, 10),
-    new THREE.MeshStandardMaterial({ color: 0xd9c1a3, roughness: 0.8 }),
-  );
-  head.position.y = 1.52;
-  const visor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.3, 0.08, 0.06),
-    new THREE.MeshStandardMaterial({ color: 0x111418 }),
-  );
-  visor.position.set(0, 1.54, 0.19);
-  const gun = new THREE.Mesh(
-    new THREE.BoxGeometry(0.09, 0.12, 0.75),
-    new THREE.MeshStandardMaterial({ color: 0x1c222c, roughness: 0.5, metalness: 0.4 }),
-  );
-  gun.position.set(0.28, 1.25, 0.35);
-  const marker = new THREE.Mesh(
-    new THREE.SphereGeometry(0.07, 8, 6),
-    new THREE.MeshBasicMaterial({ color: team === 'north' ? 0x35c4ff : 0xff6b57 }),
-  );
+  const accent = team === 'north' ? PALETTE.teamNorth : PALETTE.teamIce;
+  const uniform = new THREE.MeshStandardMaterial({ color: team === 'north' ? 0x2a9fd8 : 0xd84a3a, roughness: 0.7 });
+  const trousers = new THREE.MeshStandardMaterial({ color: 0x2e3742, roughness: 0.85 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x232a33, roughness: 0.8 });
+  const bootMat = new THREE.MeshStandardMaterial({ color: 0x1c222c, roughness: 0.7 });
+  const skin = new THREE.MeshStandardMaterial({ color: 0xd9c1a3, roughness: 0.8 });
+  const helmetMat = new THREE.MeshStandardMaterial({ color: 0x3a4550, roughness: 0.6, metalness: 0.2 });
+  const accentMat = new THREE.MeshStandardMaterial({ color: accent, roughness: 0.6 });
+  const visorMat = new THREE.MeshStandardMaterial({ color: 0x111418, roughness: 0.3, metalness: 0.4 });
+  const parts = [];
+  const add = (mesh) => {
+    parts.push(mesh);
+    return mesh;
+  };
+  // Legs: thigh, shin and boot, one per side.
+  for (const sx of [-1, 1]) {
+    const thigh = add(new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.42, 0.17), trousers));
+    thigh.position.set(0.11 * sx, 0.62, 0);
+    const shin = add(new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.38, 0.15), trousers));
+    shin.position.set(0.11 * sx, 0.22, 0.01);
+    const boot = add(new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.26), bootMat));
+    boot.position.set(0.11 * sx, 0.045, 0.04);
+  }
+  // Torso with plate carrier, belt and shoulder pads.
+  const body = add(new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.55, 0.3), uniform));
+  body.position.y = 1.1;
+  const vestFront = add(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.4, 0.06), dark));
+  vestFront.position.set(0, 1.12, 0.17);
+  const vestBack = add(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.4, 0.06), dark));
+  vestBack.position.set(0, 1.12, -0.17);
+  const belt = add(new THREE.Mesh(new THREE.BoxGeometry(0.53, 0.06, 0.31), dark));
+  belt.position.set(0, 0.86, 0);
+  for (const sx of [-1, 1]) {
+    const pad = add(new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.07, 0.28), accentMat));
+    pad.position.set(0.27 * sx, 1.36, 0);
+  }
+  const patch = add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.015), accentMat));
+  patch.position.set(0, 1.22, 0.205);
+  // Backpack with a bedroll on top.
+  const pack = add(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.4, 0.13), dark));
+  pack.position.set(0, 1.12, -0.235);
+  const roll = add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.36, 10), helmetMat));
+  roll.rotation.z = Math.PI / 2;
+  roll.position.set(0, 1.35, -0.235);
+  // Head: neck, face, helmet dome + brim, goggles visor.
+  const neck = add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.08, 8), skin));
+  neck.position.set(0, 1.4, 0);
+  const head = add(new THREE.Mesh(new THREE.SphereGeometry(0.19, 14, 12), skin));
+  head.position.y = 1.53;
+  const helmet = add(new THREE.Mesh(new THREE.SphereGeometry(0.21, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), helmetMat));
+  helmet.position.set(0, 1.53, -0.01);
+  const brim = add(new THREE.Mesh(new THREE.CylinderGeometry(0.215, 0.215, 0.025, 14), helmetMat));
+  brim.position.set(0, 1.545, 0);
+  const visor = add(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.09, 0.05), visorMat));
+  visor.position.set(0, 1.54, 0.175);
+  // Held rifle, angled slightly down-forward across the chest.
+  const rifle = buildBotRifle();
+  rifle.position.set(0.05, 1.18, 0.3);
+  rifle.rotation.x = 0.06;
+  parts.push(rifle);
+  // Arms: two segments each, reaching from the shoulders to the rifle —
+  // right hand on the grip, left hand on the handguard.
+  const glove = new THREE.MeshStandardMaterial({ color: 0x232a33, roughness: 0.8 });
+  const shoulderR = new THREE.Vector3(0.29, 1.33, 0);
+  const shoulderL = new THREE.Vector3(-0.29, 1.33, 0);
+  const elbowR = new THREE.Vector3(0.3, 1.13, 0.1);
+  const elbowL = new THREE.Vector3(-0.28, 1.15, 0.22);
+  const handR = new THREE.Vector3(0.1, 1.1, 0.22);
+  const handL = new THREE.Vector3(-0.1, 1.16, 0.48);
+  parts.push(limb(shoulderR, elbowR, 0.06, uniform));
+  parts.push(limb(elbowR, handR, 0.055, uniform));
+  parts.push(limb(shoulderL, elbowL, 0.06, uniform));
+  parts.push(limb(elbowL, handL, 0.055, uniform));
+  for (const h of [handR, handL]) {
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), glove);
+    hand.position.copy(h);
+    parts.push(hand);
+  }
+  // Team marker above the helmet (soft palette colour, not neon).
+  const marker = add(new THREE.Mesh(
+    new THREE.SphereGeometry(0.06, 8, 6),
+    new THREE.MeshBasicMaterial({ color: accent }),
+  ));
   marker.position.y = 1.98;
-  group.add(body, head, visor, gun, marker);
+  for (const p of parts) group.add(p);
   scene.add(group);
   return { group, body, head, marker };
 }
@@ -375,7 +562,11 @@ function updateMeshes() {
     }
     m.group.visible = true;
     m.group.position.set(a.x, a.y, a.z);
-    m.group.rotation.y = a.yaw;
+    // The model faces local +z, but the game's yaw convention points
+    // the aim at (sin yaw, -cos yaw); rotation.y = PI - yaw lines the
+    // soldier's face and rifle up with where it actually looks and
+    // shoots. Hit detection is positional and unaffected.
+    m.group.rotation.y = Math.PI - a.yaw;
     const s = a.crouch ? 0.78 : 1;
     m.group.scale.set(1, s, 1);
   }
@@ -401,6 +592,7 @@ function render() {
   }
   viewGun.position.z = -0.55 + recoilKick * 1.1;
   viewGun.position.y = -0.27 + Math.sin(bobPhase) * 0.006;
+  updateViewGun();
   updateMeshes();
   station.update(state.time);
   effects.update(1 / 60, state.time);
@@ -449,24 +641,32 @@ function applyShotMode() {
     planRound(state);
   }
   if (SHOT === 'play') {
+    // Player north of the bot, looking south: the bot faces the
+    // player (north), so the moonlight falls on its front and the new
+    // soldier model (helmet, vest, rifle) reads clearly.
     player.x = 0;
-    player.z = 10;
-    player.yaw = 0;
+    player.z = 0;
+    player.yaw = Math.PI;
     const b0 = state.agents.find((a) => a.id === 'i0');
     const b1 = state.agents.find((a) => a.id === 'i1');
     if (b0) {
+      // Close-up: 5 m ahead, facing the player, so the new soldier
+      // model (helmet, vest, rifle) reads clearly. Invulnerable, like
+      // the player, so the other bots cannot kill it before the shot.
       b0.x = 0;
-      b0.z = -2;
-      b0.yaw = Math.PI;
+      b0.z = 5;
+      b0.yaw = 0;
       b0.mode = 'hold';
       b0.holdUntil = 1e9;
+      b0.invulnerable = true;
     }
     if (b1) {
-      b1.x = 4;
-      b1.z = -5;
-      b1.yaw = Math.PI + 0.3;
+      b1.x = 3;
+      b1.z = 7;
+      b1.yaw = -0.4;
       b1.mode = 'hold';
       b1.holdUntil = 1e9;
+      b1.invulnerable = true;
     }
   }
   if (SHOT === 'bomb') {
@@ -485,6 +685,7 @@ function applyShotMode() {
       b0.yaw = Math.PI - 0.4;
       b0.mode = 'hold';
       b0.holdUntil = 1e9;
+      b0.invulnerable = true;
     }
     effects.addTracer({ x: 20, y: 1.6, z: -6 }, { x: 14.5, y: 1.4, z: -2.5 }, 0xff8a7a);
   }
