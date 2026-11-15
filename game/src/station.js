@@ -143,7 +143,7 @@ export function buildStation(scene) {
   g.add(mast);
   const beacon = new THREE.Mesh(
     new THREE.SphereGeometry(0.28, 10, 8),
-    new THREE.MeshBasicMaterial({ color: 0xff4444 }),
+    new THREE.MeshBasicMaterial({ color: 0x8a2a22 }),
   );
   beacon.position.set(tx, tower.y1 + 0.3, tz);
   g.add(beacon);
@@ -181,7 +181,7 @@ export function buildStation(scene) {
   for (const [key, site] of Object.entries(SITES)) {
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(site.r - 0.8, site.r, 48),
-      new THREE.MeshBasicMaterial({ color: PALETTE.aurora, transparent: true, opacity: 0.45, side: THREE.DoubleSide }),
+      new THREE.MeshBasicMaterial({ color: PALETTE.aurora, transparent: true, opacity: 0.28, side: THREE.DoubleSide }),
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(site.x, 0.05, site.z);
@@ -198,7 +198,7 @@ export function buildStation(scene) {
   // Moon: a pale disc low in the northern sky.
   const moon = new THREE.Mesh(
     new THREE.CircleGeometry(4, 32),
-    new THREE.MeshBasicMaterial({ color: 0xe8f0ff, fog: false }),
+    new THREE.MeshBasicMaterial({ color: 0xc8d6e8, fog: false }),
   );
   moon.position.set(-38, 46, -85);
   moon.lookAt(0, 0, 0);
@@ -217,7 +217,7 @@ export function buildStation(scene) {
   }
   const starGeo = new THREE.BufferGeometry();
   starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-  const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xcfe0ff, size: 0.9, sizeAttenuation: false, transparent: true, opacity: 0.85, fog: false }));
+  const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xb8c8e0, size: 0.9, sizeAttenuation: false, transparent: true, opacity: 0.6, fog: false }));
   g.add(stars);
 
   // Aurora: a wide ribbon in the northern sky, animated by a shader.
@@ -245,10 +245,10 @@ export function buildStation(scene) {
         float band = sin(vUv.x * 9.0 + uTime * 0.35 + sin(vUv.x * 4.0) * 2.0);
         float edge = smoothstep(0.0, 0.35, vUv.y) * smoothstep(1.0, 0.55, vUv.y);
         float glow = 0.5 + 0.5 * band;
-        vec3 green = vec3(0.25, 1.0, 0.65);
-        vec3 cyan = vec3(0.2, 0.85, 1.0);
+        vec3 green = vec3(0.18, 0.72, 0.50);
+        vec3 cyan = vec3(0.16, 0.60, 0.75);
         vec3 col = mix(green, cyan, vUv.y);
-        gl_FragColor = vec4(col, edge * (0.18 + 0.30 * glow));
+        gl_FragColor = vec4(col, edge * (0.10 + 0.16 * glow));
       }`,
   });
   const aurora = new THREE.Mesh(new THREE.PlaneGeometry(110, 22, 48, 1), auroraMat);
@@ -258,17 +258,17 @@ export function buildStation(scene) {
   animated.aurora = auroraUniforms;
 
   // Lights: cold moonlight, sky fill, warm windows, cyan site beacons.
-  scene.add(new THREE.HemisphereLight(0x16294d, 0x0a0f1c, 0.85));
-  const moonLight = new THREE.DirectionalLight(0xbcd3ff, 1.15);
+  scene.add(new THREE.HemisphereLight(0x16294d, 0x0a0f1c, 0.65));
+  const moonLight = new THREE.DirectionalLight(0xbcd3ff, 0.85);
   moonLight.position.set(30, 45, -20);
   scene.add(moonLight);
   for (const [x, z] of [[-16, -15.5], [-16, 0], [-16, 10]]) {
-    const warm = new THREE.PointLight(PALETTE.windowWarm, 26, 20, 2);
+    const warm = new THREE.PointLight(PALETTE.windowWarm, 14, 20, 2);
     warm.position.set(x + 2.2, 2.2, z);
     scene.add(warm);
   }
   for (const site of Object.values(SITES)) {
-    const beaconLight = new THREE.PointLight(PALETTE.aurora, 16, 15, 2);
+    const beaconLight = new THREE.PointLight(PALETTE.aurora, 7, 15, 2);
     beaconLight.position.set(site.x, 3.4, site.z);
     scene.add(beaconLight);
   }
@@ -277,9 +277,11 @@ export function buildStation(scene) {
     group: g,
     update(t) {
       animated.aurora.uTime.value = t;
-      animated.towerBeacon.material.color.setHex(Math.sin(t * 3.0) > 0 ? 0xff4444 : 0x551111);
+      // Tower beacon: steady dim red, never blinking (blinking lights
+      // are hard on the eyes).
+      animated.towerBeacon.material.color.setHex(0x8a2a22);
       for (const ring of Object.values(animated.rings)) {
-        ring.material.opacity = 0.35 + 0.18 * Math.sin(t * 1.6);
+        ring.material.opacity = 0.22 + 0.08 * Math.sin(t * 1.6);
       }
     },
   };

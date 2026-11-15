@@ -10,12 +10,12 @@
     --canvas: #050914;
     --surface: #0b1526;
     --hairline: #22344f;
-    --ink: #e8f1fb;
+    --ink: #c7d6e8;
     --muted: #8fa5bf;
-    --accent: #37e0ff;
-    --accent-green: #4dffb8;
-    --danger: #ff6b57;
-    --warm: #ffb347;
+    --accent: #2fa8c4;
+    --accent-green: #3aa88a;
+    --danger: #e06a5c;
+    --warm: #e8a54d;
     --radius: 6px;
     --font-ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
     --font-readout: ui-monospace, 'SF Mono', Menlo, monospace;
@@ -33,7 +33,7 @@
   #hud { position: fixed; inset: 0; pointer-events: none; }
 
   #crosshair { position: fixed; left: 50%; top: 50%; width: 24px; height: 24px; transform: translate(-50%, -50%); --gap: 4px; }
-  #crosshair i { position: absolute; background: var(--ink); opacity: .9; box-shadow: 0 0 3px #000; }
+  #crosshair i { position: absolute; background: var(--ink); opacity: .65; }
   #crosshair i:nth-child(1) { left: 11px; top: 0; width: 2px; height: calc(7px + var(--gap) * 0); }
   #crosshair i:nth-child(2) { left: 11px; bottom: 0; width: 2px; height: 7px; }
   #crosshair i:nth-child(3) { top: 11px; left: 0; height: 2px; width: 7px; }

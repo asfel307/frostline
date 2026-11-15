@@ -33,7 +33,7 @@ export function createEffects(scene) {
   const tracerGeo = new THREE.BufferGeometry();
   const tracerPos = new Float32Array(TRACER_POOL * 2 * 3);
   tracerGeo.setAttribute('position', new THREE.BufferAttribute(tracerPos, 3));
-  const tracerMat = new THREE.LineBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.9 });
+  const tracerMat = new THREE.LineBasicMaterial({ color: 0x7fb8d8, transparent: true, opacity: 0.5 });
   const tracers = new THREE.LineSegments(tracerGeo, tracerMat);
   tracers.frustumCulled = false;
   scene.add(tracers);
@@ -45,7 +45,7 @@ export function createEffects(scene) {
   for (let i = 0; i < SPARK_POOL; i += 1) {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12 * 3), 3));
-    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffe9a8, size: 3, sizeAttenuation: false, map: dotTex, transparent: true, opacity: 0, depthWrite: false }));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xe8d9a8, size: 3, sizeAttenuation: false, map: dotTex, transparent: true, opacity: 0, depthWrite: false }));
     pts.frustumCulled = false;
     pts.visible = false;
     scene.add(pts);
@@ -54,16 +54,16 @@ export function createEffects(scene) {
   let sparkNext = 0;
 
   // Muzzle flash: a sprite plus a point light at the gun.
-  const flashMat = new THREE.SpriteMaterial({ color: 0xffd9a0, transparent: true, opacity: 0, depthWrite: false });
+  const flashMat = new THREE.SpriteMaterial({ color: 0xe8c890, transparent: true, opacity: 0, depthWrite: false });
   const flash = new THREE.Sprite(flashMat);
   flash.scale.set(0.7, 0.7, 1);
   scene.add(flash);
-  const flashLight = new THREE.PointLight(0xffc070, 0, 9, 2);
+  const flashLight = new THREE.PointLight(0xe8b060, 0, 9, 2);
   scene.add(flashLight);
   let flashLife = 0;
 
   // Snow: points drifting down in a box around the origin, wrapping.
-  const SNOW_N = 1400;
+  const SNOW_N = 900;
   const snowPos = new Float32Array(SNOW_N * 3);
   const snowVel = new Float32Array(SNOW_N);
   for (let i = 0; i < SNOW_N; i += 1) {
@@ -76,7 +76,7 @@ export function createEffects(scene) {
   snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
   // sizeAttenuation off: every flake is the same few pixels on screen,
   // so a flake drifting past the camera never balloons into a blob.
-  const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({ color: 0xeaf2fb, size: 2.5, sizeAttenuation: false, map: dotTex, transparent: true, opacity: 0.85, depthWrite: false }));
+  const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({ color: 0xc8d6e8, size: 2, sizeAttenuation: false, map: dotTex, transparent: true, opacity: 0.5, depthWrite: false }));
   snow.frustumCulled = false;
   scene.add(snow);
 
@@ -101,7 +101,7 @@ export function createEffects(scene) {
       tracerPos[i * 6 + 5] = to.z;
       tracerLife[i] = 0.09;
       tracerGeo.attributes.position.needsUpdate = true;
-      tracerMat.color.setHex(color ?? 0x9fd8ff);
+      tracerMat.color.setHex(color ?? 0x7fb8d8);
     },
     addSparks(at) {
       const s = sparks[sparkNext];
@@ -120,21 +120,21 @@ export function createEffects(scene) {
       }
       s.pts.geometry.attributes.position.needsUpdate = true;
       s.pts.visible = true;
-      s.pts.material.opacity = 1;
+      s.pts.material.opacity = 0.7;
       s.life = 0.35;
     },
     muzzle(at) {
       flash.position.copy(at);
-      flash.material.opacity = 0.95;
+      flash.material.opacity = 0.5;
       flashLight.position.copy(at);
-      flashLight.intensity = 14;
+      flashLight.intensity = 7;
       flashLife = 0.05;
     },
     setBomb(x, z, on, t) {
       bombLight.position.set(x, 1.2, z);
-      bombLight.intensity = on ? 10 + 6 * Math.sin(t * 6) : 0;
+      bombLight.intensity = on ? 5 + 3 * Math.sin(t * 6) : 0;
       bombBeacon.position.set(x, 1.3, z);
-      bombBeacon.material.opacity = on ? 0.25 + 0.12 * Math.sin(t * 6) : 0;
+      bombBeacon.material.opacity = on ? 0.15 + 0.07 * Math.sin(t * 6) : 0;
     },
     update(dt, t) {
       // Fade tracers by collapsing finished segments to a point.
